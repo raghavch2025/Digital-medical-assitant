@@ -9,5 +9,8 @@
   "scripts": {
     "dev": "vercel dev",
     "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "twilio": "^6.0.2"
   }
 }
