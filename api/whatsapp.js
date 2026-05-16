@@ -3,31 +3,38 @@
 // Twilio webhook — called every time someone sends our number a WhatsApp.
 // For now we just echo the message back so we can verify the pipe works.
 // In Phase 3+ we'll add real parsing, logging, scheduled reminders, etc.
-//
-// Twilio sends the message as application/x-www-form-urlencoded POST body.
-// Vercel auto-parses that into req.body for us.
-//
-// We respond with TwiML — a tiny XML format Twilio understands. The <Message>
-// inside <Response> tells Twilio to send that text back to the user.
 
 export default async function handler(req, res) {
-  // Only accept POST (Twilio uses POST). Reject anything else.
-  if (req.method !== 'POST') {
-    return res.status(405).type('text/plain').send('Method not allowed');
+  // Friendly GET response — for when you accidentally visit this URL in
+  // a browser. Twilio always POSTs, so this never affects real traffic.
+  if (req.method === 'GET') {
+    res.setHeader('Content-Type', 'text/plain');
+    return res.status(200).send(
+      'this endpoint is the Twilio WhatsApp webhook.\n' +
+      'it expects POST requests from Twilio.\n' +
+      'visiting it directly in a browser does nothing useful.\n'
+    );
   }
 
-  // Twilio's POST body fields. From = sender's WhatsApp address, Body = message text.
-  const from = req.body?.From || 'unknown';
-  const body = (req.body?.Body || '').trim();
+  // Everything other than POST gets 405 Method Not Allowed
+  if (req.method !== 'POST') {
+    res.setHeader('Content-Type', 'text/plain');
+    return res.status(405).send('method not allowed — POST only');
+  }
 
-  console.log(`[whatsapp] from=${from} body="${body}"`);
+  // From Twilio: application/x-www-form-urlencoded body, auto-parsed by Vercel.
+  // Defensive defaults in case the body is missing or malformed.
+  const body = req.body || {};
+  const from = body.From || 'unknown';
+  const text = (body.Body || '').trim();
 
-  // Build the reply. Phase 2 just echoes — we'll add real intelligence next.
-  const reply = body
-    ? `got it, you said: "${body}"`
+  console.log(`[whatsapp] from=${from} body="${text}"`);
+
+  const reply = text
+    ? `got it, you said: "${text}"`
     : `got it (empty message)`;
 
-  // Send TwiML back to Twilio. Twilio relays the <Message> to the user.
+  // TwiML response — XML format Twilio expects.
   const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Message>${escapeXml(reply)}</Message>
@@ -37,8 +44,6 @@ export default async function handler(req, res) {
   return res.status(200).send(twiml);
 }
 
-// XML special characters must be escaped, otherwise a message with <, >, &
-// breaks Twilio's parser.
 function escapeXml(s) {
   return String(s)
     .replace(/&/g, '&amp;')
