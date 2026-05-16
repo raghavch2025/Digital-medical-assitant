@@ -1,0 +1,13 @@
+{
+  "name": "digital-raghav-v2",
+  "version": "0.1.0",
+  "description": "WhatsApp health companion for Madhav",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  }
+}
